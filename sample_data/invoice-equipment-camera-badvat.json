@@ -1,0 +1,12 @@
+{
+  "doc_type": "invoice",
+  "document_date": "2025-11-26",
+  "vendor": "Lenshade Photo Gear",
+  "invoice_number": "LS-88123",
+  "description": "4K PTZ video camera + tripod",
+  "amount": 2150.0,
+  "currency": "USD",
+  "tax_amount": 2999.0,
+  "category": "equipment",
+  "extraction_confidence": 0.93
+}

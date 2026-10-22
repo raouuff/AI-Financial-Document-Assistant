@@ -1,0 +1,12 @@
+{
+  "doc_type": "invoice",
+  "document_date": "2025-11-03",
+  "vendor": "CloudPeak Software Ltd.",
+  "invoice_number": "CP-2025-00417",
+  "description": "CloudPlan Pro annual SaaS subscription, 12 seats",
+  "amount": 1322.4,
+  "currency": "usd",
+  "tax_amount": 182.4,
+  "category": "software",
+  "extraction_confidence": 0.97
+}

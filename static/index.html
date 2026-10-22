@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Financial Document Assistant</title>
+<style>
+  :root{--bg:#f5f6fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--accent:#2563eb;
+        --err:#dc2626;--warn:#d97706;--info:#0891b2;--ok:#16a34a;--line:#e5e7eb}
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink)}
+  header{background:#0f172a;color:#fff;padding:14px 24px;display:flex;
+         align-items:center;gap:12px}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  header .mode{font-size:12px;background:#1e3a8a;padding:3px 10px;border-radius:999px}
+  nav{display:flex;gap:8px;padding:12px 24px 0}
+  nav button{border:1px solid var(--line);background:#fff;padding:8px 18px;
+             border-radius:8px 8px 0 0;cursor:pointer;font-size:14px}
+  nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  main{padding:16px 24px 40px;max-width:1100px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:20px;margin-bottom:16px}
+  .drop{border:2px dashed #93b4fd;border-radius:12px;padding:34px;text-align:center;
+        color:var(--muted);cursor:pointer;transition:.15s}
+  .drop.hover{background:#eef4ff}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;
+        vertical-align:top}
+  th{background:#f8fafc;font-weight:600;color:#374151;white-space:nowrap}
+  .flag{display:block;margin:2px 0;font-size:12px;border-radius:6px;padding:3px 8px}
+  .flag.error{background:#fee2e2;color:var(--err)}
+  .flag.warning{background:#fef3c7;color:var(--warn)}
+  .flag.info{background:#cffafe;color:var(--info)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;display:inline-block}
+  .badge.approved{background:#dcfce7;color:var(--ok)}
+  .badge.pending_review{background:#fef9c3;color:#a16207}
+  .badge.rejected{background:#fee2e2;color:var(--err)}
+  select,input{padding:5px 7px;border:1px solid var(--line);border-radius:6px;
+               font-size:13px}
+  .btn{border:0;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.ghost{background:#eef2f7}
+  .btn:disabled{opacity:.5;cursor:default}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .kv .box{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .kv .box b{font-size:20px;display:block}
+  .kv .box span{color:var(--muted);font-size:12px}
+  #summaryPre{background:#0f172a;color:#d1e3ff;padding:16px;border-radius:10px;
+              white-space:pre-wrap;font-size:13px;overflow:auto}
+  .toast{position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;
+         padding:10px 18px;border-radius:10px;display:none;font-size:14px;z-index:50}
+  .toast.error{background:var(--err)}
+  .hidden{display:none}
+  .amount{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header>
+  <h1>💰 AI Financial Document Assistant</h1>
+  <span class="mode" id="modeBadge">…</span>
+</header>
+
+<nav>
+  <button data-tab="upload" class="active">Upload & Process</button>
+  <button data-tab="tracker"  id="tabTracker">Expense Tracker</button>
+  <button data-tab="summary">Financial Summary</button>
+  <button data-tab="about">About</button>
+</nav>
+
+<main>
+  <!-- ================= UPLOAD ================= -->
+  <section id="tab-upload">
+    <div class="card">
+      <h3 style="margin-top:0">Upload an invoice or receipt (PDF / PNG / JPG, ≤ 15 MB)</h3>
+      <div class="drop" id="drop">Click to choose a file, or drag & drop it here.
+        <div style="font-size:12px;margin-top:8px">Tip: sample documents live in
+          <code>sample_data/</code> — try them in demo mode (no API key needed).</div>
+      </div>
+      <input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.webp" hidden>
+      <div id="uploadResult"></div>
+    </div>
+  </section>
+
+  <!-- ================= TRACKER ================= -->
+  <section id="tab-tracker" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0">Expense Tracker <span id="count" style="color:var(--muted);font-weight:400"></span></h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="filter">
+            <option value="">All statuses</option>
+            <option value="pending_review">Pending review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="btn ghost" id="reloadBtn">↻ Refresh</button>
+          <a class="btn primary" id="csvBtn" href="/api/export/csv" download>⬇ Export CSV</a>
+        </div>
+      </div>
+      <div style="overflow:auto">
+      <table id="tbl">
+        <thead><tr>
+          <th>ID</th><th>Status</th><th>Date</th><th>Vendor</th><th>Invoice #</th>
+          <th>Description</th><th>Category</th><th class="amount">Amount</th>
+          <th class="amount">Tax/VAT</th><th>Validation flags</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SUMMARY ================= -->
+  <section id="tab-summary" class="hidden">
+    <div class="card"><h3 style="margin-top:0">Overview</h3><div class="kv" id="kpi"></div></div>
+    <div class="card"><h3 style="margin-top:0">Financial summary (by category × currency)</h3>
+      <div id="summaryTable"></div></div>
+    <div class="card"><h3 style="margin-top:0">Markdown export</h3>
+      <a class="btn ghost" href="/api/summary.md" download="financial_summary.md">⬇ Download summary.md</a>
+      <pre id="summaryPre"></pre></div>
+  </section>
+
+  <!-- ================= ABOUT ================= -->
+  <section id="tab-about" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0">How this works</h3>
+      <ol style="line-height:1.7">
+        <li><b>Upload</b> a PDF/PNG/JPG invoice or receipt.</li>
+        <li><b>Gemini</b> extracts date, vendor, invoice #, description, amount,
+            currency, VAT, and suggests one of the 6 categories.</li>
+        <li><b>Validation rules</b> flag missing info, inconsistent entries
+            (bad dates, tax ≥ total, unknown currency…), and
+            <b>potential duplicates</b> (same vendor + invoice #, same file hash,
+            or same vendor + amount + date ± 3 days).</li>
+        <li>The record lands in the <b>expense tracker</b> (SQLite). Fix any flag
+            inline, then <b>approve</b> it.</li>
+        <li>The <b>financial summary</b> tab totals expenses by category and
+            currency; CSV/Markdown exports are one click away.</li>
+      </ol>
+      <p style="color:var(--muted);font-size:13px">API docs: <a href="/docs">/docs</a>
+      (OpenAPI) · Source: <code>app/</code> · Test plan: <code>docs/TEST_PLAN.md</code></p>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const cats = ["personnel","travel","equipment","software","events","operational"];
+
+function toast(msg, err=false){
+  const t = $("#toast"); t.textContent = msg;
+  t.className = "toast" + (err ? " error" : "");
+  t.style.display = "block";
+  setTimeout(()=> t.style.display="none", 3500);
+}
+
+// ---- tabs ----
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  ["upload","tracker","summary","about"].forEach(t =>
+    $("#tab-"+t).classList.toggle("hidden", t !== b.dataset.tab));
+  if (b.dataset.tab === "tracker") loadExpenses();
+  if (b.dataset.tab === "summary") loadSummary();
+  if (b.dataset.tab === "upload")  loadMode();
+});
+
+// ---- upload ----
+const drop = $("#drop"), fileIn = $("#file");
+drop.onclick = () => fileIn.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("hover"); };
+drop.ondragleave = () => drop.classList.remove("hover");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("hover");
+  if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]); };
+fileIn.onchange = () => fileIn.files[0] && handleUpload(fileIn.files[0]);
+
+async function loadMode(){
+  const h = await (await fetch("/api/health")).json();
+  $("#modeBadge").textContent = h.mode === "demo"
+    ? "DEMO MODE (no API key — use sample_data/)" : "LIVE MODE (Gemini)";
+}
+
+async function handleUpload(f){
+  $("#uploadResult").innerHTML = "<p>⏳ Extracting with AI…</p>";
+  const fd = new FormData(); fd.append("file", f);
+  const res = await fetch("/api/upload", {method:"POST", body:fd});
+  const data = await res.json();
+  if (!res.ok){ $("#uploadResult").innerHTML =
+    `<p style="color:var(--err)">❌ ${data.error || res.statusText}</p>`; toast("Upload failed", true); return; }
+  toast("Extracted ✔ — id #" + data.id);
+  $("#uploadResult").innerHTML = renderRecord(data, true);
+}
+
+function renderRecord(r, full=false){
+  const flags = (r.flags||[]).map(f =>
+    `<span class="flag ${f.severity}">[${f.type}] ${f.message}</span>`).join("");
+  return `<div class="card" style="margin:14px 0 0">
+    <b>#${r.id} — ${r.doc_filename}</b>
+    <table><tbody>
+      <tr><th>Date</th><td>${r.doc_date||"—"}</td>
+          <th>Vendor</th><td>${r.vendor||"—"}</td></tr>
+      <tr><th>Invoice #</th><td>${r.invoice_number||"—"}</td>
+          <th>Doc type</th><td>${r.doc_type}</td></tr>
+      <tr><th>Description</th><td>${r.description||"—"}</td>
+          <th>Amount</th><td><b>${r.currency||""} ${r.amount??"—"}</b>
+          (tax: ${r.tax_amount??"—"})</td></tr>
+      <tr><th>Category</th><td>${r.category}</td>
+          <th>AI confidence</th><td>${Math.round((r.confidence||0)*100)}%</td></tr>
+    </tbody></table>
+    ${flags || '<span style="color:var(--ok);font-size:13px">✔ No validation issues</span>'}
+  </div>`;
+}
+
+// ---- tracker table ----
+async function loadExpenses(){
+  const status = $("#filter").value;
+  const rows = await (await fetch("/api/expenses" + (status?`?status=${status}`:""))).json();
+  $("#count").textContent = `(${rows.length} record${rows.length===1?"":"s"})`;
+  $("#rows").innerHTML = rows.map(r => `<tr>
+    <td>#${r.id}</td>
+    <td><span class="badge ${r.status}">${r.status.replace("_"," ")}</span></td>
+    <td><input data-id="${r.id}" data-f="doc_date" value="${r.doc_date||""}" size="10"></td>
+    <td><input data-id="${r.id}" data-f="vendor" value="${(r.vendor||"").replace(/"/g,""")}" size="18"></td>
+    <td>${r.invoice_number||"—"}</td>
+    <td>${r.description||"—"}</td>
+    <td><select data-id="${r.id}" data-f="category">
+      ${cats.map(c=>`<option ${c===r.category?"selected":""}>${c}</option>`).join("")}
+    </select></td>
+    <td class="amount">${r.currency||""} <input data-id="${r.id}" data-f="amount"
+        data-type="number" value="${r.amount??""}" size="7" style="text-align:right"></td>
+    <td class="amount">${r.tax_amount??"—"}</td>
+    <td>${(r.flags||[]).map(f =>
+        `<span class="flag ${f.severity}">[${f.type}] ${f.message}</span>`).join("")
+        || '<span style="color:var(--ok)">✔</span>'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn ghost" onclick="saveRow(${r.id})">Save</button>
+      <button class="btn primary" onclick="setStatus(${r.id},'approved')">Approve</button>
+      <button class="btn ghost" onclick="setStatus(${r.id},'rejected')">Reject</button>
+    </td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">
+      No records yet — process a document on the Upload tab.</td></tr>`;
+}
+$("#reloadBtn").onclick = loadExpenses;
+$("#filter").onchange = loadExpenses;
+
+window.saveRow = async id => {
+  const g = sel => document.querySelector(`[data-id="${id}"][data-f="${sel}"]`);
+  const body = {
+    doc_date: g("doc_date").value, vendor: g("vendor").value,
+    category: g("category").value,
+    amount: g("amount").value === "" ? null : Number(g("amount").value),
+  };
+  const res = await fetch(`/api/expenses/${id}`, {method:"PATCH",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  if (!res.ok){ toast((await res.json()).error, true); return; }
+  toast("Saved & re-validated ✔"); loadExpenses();
+};
+window.setStatus = async (id, status) => {
+  await fetch(`/api/expenses/${id}/status`, {method:"POST",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify({status})});
+  toast(status === "approved" ? "Approved ✔" : "Rejected", status!=="approved");
+  loadExpenses();
+};
+
+// ---- summary ----
+async function loadSummary(){
+  const s = await (await fetch("/api/summary")).json();
+  $("#kpi").innerHTML = [
+    ["Total records", s.total_expenses], ["Awaiting review", s.open_items_awaiting_review],
+    ["Flagged items", s.items_flagged_for_review], ["Potential duplicates", s.potential_duplicates],
+  ].map(([k,v]) => `<div class="box"><span>${k}</span><b>${v}</b></div>`).join("");
+
+  $("#summaryTable").innerHTML = `<table><thead><tr><th>Category</th>
+    <th>Breakdown</th></tr></thead><tbody>
+    ${Object.entries(s.by_category).map(([c,i]) =>
+      `<tr><td><b>${c}</b></td><td>${i.grand_total_for_display||"—"}</td></tr>`).join("")}
+    </tbody></table>
+    <p style="margin:10px 0 0;color:var(--muted)">By currency: ${
+      Object.entries(s.by_currency).map(([c,v])=>`${c} ${v.toLocaleString()}`).join(" · ")
+      || "—"}</p>`;
+  $("#summaryPre").textContent = await (await fetch("/api/summary.md")).text();
+}
+loadMode();
+</script>
+</body>
+</html>

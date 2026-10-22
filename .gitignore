@@ -1,0 +1,11 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# runtime data (fresh DB is created on boot)
+data/
+.DS_Store

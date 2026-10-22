@@ -1,0 +1,12 @@
+{
+  "doc_type": "receipt",
+  "document_date": "",
+  "vendor": "Urban Spoon Catering Co.",
+  "invoice_number": "",
+  "description": "Hackathon catering \u2014 lunch buffet, 42 guests",
+  "amount": 697.6,
+  "currency": "USD",
+  "tax_amount": 57.6,
+  "category": "events",
+  "extraction_confidence": 0.71
+}

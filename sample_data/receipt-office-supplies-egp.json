@@ -1,0 +1,12 @@
+{
+  "doc_type": "receipt",
+  "document_date": "2025-11-18",
+  "vendor": "El-Mansour Stationery",
+  "invoice_number": "",
+  "description": "Printer paper, ink toner and folders",
+  "amount": 334.19,
+  "currency": "EGP",
+  "tax_amount": 41.04,
+  "category": "operational",
+  "extraction_confidence": 0.84
+}

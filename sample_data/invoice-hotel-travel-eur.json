@@ -1,0 +1,12 @@
+{
+  "doc_type": "invoice",
+  "document_date": "2025-12-08",
+  "vendor": "Alpenhof Business Hotel",
+  "invoice_number": "ABH-449211",
+  "description": "2 rooms x 3 nights incl. breakfast",
+  "amount": 464.1,
+  "currency": "eur",
+  "tax_amount": 74.1,
+  "category": "travel",
+  "extraction_confidence": 0.96
+}

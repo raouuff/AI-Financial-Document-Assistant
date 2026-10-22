@@ -1,0 +1,3 @@
+# Dev-only dependency for generating sample documents (not needed at runtime).
+pillow>=10.0
+fpdf2>=2.7
