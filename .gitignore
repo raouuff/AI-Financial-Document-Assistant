@@ -9,3 +9,7 @@ __pycache__/
 # runtime data (fresh DB is created on boot)
 data/
 .DS_Store
+
+# files downloaded at runtime via the dashboard Export button (deliverable
+# exports are the curated exports/sample_* files)
+exports/expense_tracker*.csv
