@@ -4,7 +4,6 @@ from __future__ import annotations
 import csv
 import io
 import json
-import secrets
 from datetime import date
 from pathlib import Path
 
@@ -12,24 +11,14 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import categorizer, db, extractor, summary, validator
+from . import db, extractor, summary, validator
 from .config import (
     ALLOWED_MIME, EXPORT_DIR, UPLOAD_DIR, demo_active, BASE_DIR,
 )
 
-app = FastAPI(title="AI Financial Document Assistant", version="1.1.0")
+app = FastAPI(title="AI Financial Document Assistant", version="1.0.0")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 db.init_db()
-
-# In-memory staging area: upload -> review/edit -> confirm/discard.
-# (localhost prototype; staged records are not persisted until confirmed)
-STAGED: dict[str, dict] = {}
-
-# Fields the user may edit on a staged extraction
-EDITABLE_FIELDS = {
-    "doc_type", "doc_date", "vendor", "invoice_number", "description",
-    "amount", "currency", "tax_amount", "category",
-}
 
 
 # ----------------------------------------------------------------- dashboard
@@ -67,11 +56,7 @@ def _save_upload(file: UploadFile) -> tuple[Path, str]:
 
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
-    """Stage a document: extract -> categorize -> validate, but DON'T store yet.
-
-    The returned staging token must be confirmed (/api/staged/{token}/confirm)
-    or discarded (/api/staged/{token}/discard) before the tracker changes.
-    """
+    """Upload -> extract -> categorize -> validate -> store."""
     path, mime = _save_upload(file)
     try:
         extracted = extractor.extract(path, mime)
@@ -89,63 +74,8 @@ async def upload(file: UploadFile = File(...)):
         "file_path": str(path),
     }
     flags = validator.de_dupe(validator.validate(record))
-    token = secrets.token_urlsafe(8)
-    STAGED[token] = record
-    return {
-        "staging_token": token,
-        "record": record,
-        "flags": flags,
-        "note": "Staged — edit if needed, then Confirm to add it to the tracker.",
-    }
-
-
-def _apply_edits(record: dict, edits: dict) -> dict:
-    """Merge user edits into a staged record (with light normalization)."""
-    merged = dict(record)
-    for k, v in (edits or {}).items():
-        if k not in EDITABLE_FIELDS:
-            continue
-        if k == "amount" or k == "tax_amount":
-            try:
-                merged[k] = round(float(v), 2) if v not in (None, "", "null") else None
-            except (TypeError, ValueError):
-                raise HTTPException(400, f"{k} must be a number.")
-        elif k == "currency":
-            v = str(v or "").strip().upper()
-            merged[k] = v if len(v) == 3 else None
-        elif k == "doc_type":
-            merged[k] = v if v in ("invoice", "receipt", "unknown") else "unknown"
-        elif k == "category":
-            merged[k] = categorizer.categorize(v, merged.get("description") or "")
-        else:
-            merged[k] = str(v).strip() if v is not None else ""
-    return merged
-
-
-@app.post("/api/staged/{token}/confirm")
-def confirm_staged(token: str, body: dict):
-    """User reviewed (and possibly edited) the extraction -> store in tracker."""
-    rec = STAGED.get(token)
-    if rec is None:
-        raise HTTPException(
-            404, "Staged extraction not found — it was already confirmed, "
-                 "discarded, or the server restarted. Please upload again."
-        )
-    merged = _apply_edits(rec, body.get("edits"))
-    flags = validator.de_dupe(validator.validate(merged))
-    stored = db.insert_expense(merged, flags, merged)
-    STAGED.pop(token, None)
+    stored = db.insert_expense(record, flags, extracted)
     return stored
-
-
-@app.post("/api/staged/{token}/discard")
-def discard_staged(token: str):
-    """User rejects the extraction -> nothing is stored, upload is removed."""
-    rec = STAGED.pop(token, None)
-    if rec is None:
-        raise HTTPException(404, "Staged extraction not found.")
-    Path(rec["file_path"]).unlink(missing_ok=True)
-    return {"ok": True, "discarded": rec["doc_filename"]}
 
 
 # ------------------------------------------------------------------ records

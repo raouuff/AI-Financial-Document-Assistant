@@ -16,8 +16,7 @@
    /api/summary, /api/  │        └──────────────┘      │ Sheets-    │  │
    export/csv           │                              │ equivalent │  │
                         │  human review loop:          └────────────┘  │
-   PATCH /api/expenses/ │  stage → edit → confirm/discard →            │
-   .../status           │  edit fields → re-validate → Approve/Reject  │
+   PATCH /api/expenses/ │  edit fields → re-validate → Approve/Reject  │
    .../status           └────────────────────────────────────────────┘
 ```
 
@@ -79,24 +78,13 @@ Three rule families, each producing typed flags `{type, field, severity, message
   (`pending_review|approved|rejected`), timestamps.
 - SQL indices on vendor/invoice#/category support duplicate checks.
 
-### 3.5 Staged human review (upload-time) + tracker review
-Two review gates exist, both human-controlled:
-
-1. **Staged extraction review (upload time).** `POST /api/upload` extracts,
-   categorizes and validates, but stores **nothing** — the result is held in an
-   in-memory staging area keyed by a token and returned to the dashboard as an
-   editable review card. The user edits any field (with server-side
-   normalization: dates/numbers coerced, currency upper-cased, category
-   re-checked against the six predefined ones), then either
-   - `POST /api/staged/{token}/confirm` → the merged record is **re-validated**
-     server-side and inserted into the tracker, or
-   - `POST /api/staged/{token}/discard` → nothing is stored and the uploaded
-     file is removed.
-   Staged records survive nothing beyond the process lifetime, intentionally:
-   unconfirmed uploads never enter the database.
-2. **Tracker review.** Every stored record starts `pending_review` with its
-   flags. `PATCH /api/expenses/{id}` applies a fix and **re-runs the whole
-   validation suite** immediately; Approve/Reject is a single POST.
+### 3.5 Human-in-the-loop review
+- Every new record starts `pending_review` and appears with its flags.
+- `PATCH /api/expenses/{id}` applies the human fix and **re-runs the whole
+  validation suite** immediately — correcting the date clears the missing-date
+  flag with zero extra clicks.
+- Approve/Reject is a single POST; approval is what finance teams see as the
+  "accepted" state in the tracker and summary.
 
 ### 3.6 Summary (`app/summary.py`)
 - Aggregates non-rejected records by **category** (with per-currency breakdown)
@@ -106,14 +94,11 @@ Two review gates exist, both human-controlled:
 ## 4. Data flow example (catering receipt)
 
 1. `POST /api/upload` (PNG) → extraction returns `document_date: ""`.
-2. Validator → `[missing: doc_date (error), missing: invoice_number (info)]`;
-   record is **staged only** — tracker unchanged.
-3. Review card appears; user types `2025-12-14` in the date box and presses
-   **Confirm** → `POST /api/staged/{token}/confirm` → re-validation keeps only
-   the info flag → stored as `pending_review`.
-4. **Approve** in the tracker → summary and CSV now include the events total.
-   (Had the user pressed **Discard** instead, the record and the uploaded file
-   would have been removed with no trace in the database.)
+2. Validator → `[missing: doc_date (error), missing: invoice_number (info)]`.
+3. Stored as `pending_review`; dashboard shows amber/red flags.
+4. Finance user types `2025-12-14`, presses **Save** → `PATCH` →
+   re-validation → only the info flag remains.
+5. **Approve** → summary and CSV now include the events total.
 
 ## 5. Security & privacy
 
@@ -123,9 +108,6 @@ Two review gates exist, both human-controlled:
   samples are fictional).
 - No auth/HTTPS by design (localhost prototype) — a production version would
   add SSO + object storage + row-level permissions.
-- Staged (unconfirmed) extractions live in process memory; a server restart
-  discards them (the confirm endpoint explains this and asks for re-upload) —
-  nothing un-confirmed is ever in the database.
 
 ## 6. Known limitations & future work
 

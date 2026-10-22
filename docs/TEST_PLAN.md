@@ -11,10 +11,6 @@ English (US) locale for date inputs.
 
 ## A. Quick manual E2E (dashboard)
 
-> **Staged flow:** every upload shows an editable *staged review card* — nothing
-> is stored in the tracker until you press **Confirm & add to tracker**
-> (**Discard** saves nothing). Steps below assume Confirm unless stated.
-
 | # | Step | Expected result | Pass |
 |---|---|---|---|
 | A1 | Open the app | Dark header shows mode badge: `DEMO MODE (no API key…)` or `LIVE MODE (Gemini)` | ☐ |
@@ -35,36 +31,30 @@ English (US) locale for date inputs.
 
 ```bash
 BASE=http://127.0.0.1:8000
-UP(){ curl -sf -F "file=@$1" $BASE/api/upload; }                                        # stage a doc
-CNF(){ .venv/bin/python -c "import json,sys;print(json.load(sys.stdin)['staging_token'])"; }  # get token
-CNF_TOK(){ curl -sf -X POST $BASE/api/staged/$1/confirm -H 'Content-Type: application/json' \
-          -d "${2:-'{}'}"; }                                                            # confirm (+ optional edits)
+up() { curl -sf -F "file=@$1" $BASE/api/upload; }
 
 # B1 health & mode
 curl -s $BASE/api/health | grep -E '"status":"ok"'
 
-# B2 staging: every upload returns a token + flags and writes NOTHING to the DB
-UP sample_data/invoice-software-subscription-usd.pdf   # → flags []
-curl -s $BASE/api/expenses | grep '\[\]'               # → tracker still empty ([])
+# B2 upload each sample; assert field values with jq (or python -m json.tool)
+up sample_data/invoice-software-subscription-usd.pdf   # → category software, flags []
+up sample_data/receipt-office-supplies-egp.png         # → 1 missing(info) flag
+up sample_data/invoice-hotel-travel-eur.png            # → flags []
+up sample_data/invoice-hotel-travel-eur-COPY.png       # → 1 duplicate(error) flag
+up sample_data/receipt-event-catering-usd-nodate.png   # → 1 missing(error) flag
+up sample_data/invoice-equipment-camera-badvat.png     # → 1 inconsistent(error) flag
+up sample_data/invoice-personnel-contractor-usd.pdf    # → flags []
+up sample_data/receipt-taxi-travel-usd.png             # → flags []
+up sample_data/receipt-taxi-travel-usd-same-day.png    # → 1 duplicate(error) flag (vendor+amount+date heuristic)
+up sample_data/invoice-rent-operational-aed.png        # → flags []
 
-# B3 confirm each staged doc (optionally with edits); repeat for all 10 samples
-T1=$(UP sample_data/invoice-software-subscription-usd.pdf | CNF); CNF_TOK $T1
-T2=$(UP sample_data/receipt-office-supplies-egp.png        | CNF); CNF_TOK $T2
-T3=$(UP sample_data/invoice-hotel-travel-eur.png           | CNF); CNF_TOK $T3
-# duplicate pair — confirm the COPY to see the duplicate flag appear on storage:
-T4=$(UP sample_data/invoice-hotel-travel-eur-COPY.png      | CNF); CNF_TOK $T4   # → 1 duplicate(error) flag
-T5=$(UP sample_data/receipt-event-catering-usd-nodate.png  | CNF); CNF_TOK $T5 '{"edits":{"doc_date":"2025-12-14"}}'
-T6=$(UP sample_data/invoice-equipment-camera-badvat.png    | CNF); CNF_TOK $T6   # → 1 inconsistent(error) flag
-T7=$(UP sample_data/invoice-personnel-contractor-usd.pdf   | CNF); CNF_TOK $T7
-T8=$(UP sample_data/receipt-taxi-travel-usd.png            | CNF); CNF_TOK $T8
-T9=$(UP sample_data/receipt-taxi-travel-usd-same-day.png   | CNF); CNF_TOK $T9   # → 1 duplicate(error) flag
-T10=$(UP sample_data/invoice-rent-operational-aed.png       | CNF); CNF_TOK $T10
+# B3 fix + re-validate (id 5 = catering receipt)
+curl -sf -X PATCH $BASE/api/expenses/5 -H 'Content-Type: application/json' \
+  -d '{"doc_date":"2025-12-14"}' | grep -v "doc_date.*error"
 
-# B4 status workflow (id 4 = hotel COPY → reject; others approved)
+# B4 status workflow
+curl -sf -X POST $BASE/api/expenses/1/status -H 'Content-Type: application/json' -d '{"status":"approved"}'
 curl -sf -X POST $BASE/api/expenses/4/status -H 'Content-Type: application/json' -d '{"status":"rejected"}'
-for i in 1 2 3 5 6 7 8 9 10; do
-  curl -sf -X POST $BASE/api/expenses/$i/status -H 'Content-Type: application/json' -d '{"status":"approved"}' >/dev/null
-done
 
 # B5 summary + exports (golden values: USD 5,721.08 / EUR 464.10 / EGP 334.19 /
 #    AED 3,200.00 after approving all records and rejecting the hotel COPY)
@@ -84,9 +74,6 @@ curl -s $BASE/api/export/csv
 | C6 | Same file uploaded twice | 2nd record flagged duplicate (file hash) | ☐ |
 | C7 | `GET /api/expenses?status=approved` | only approved records returned | ☐ |
 | C8 | Restart the app | all records still in SQLite (persistence) | ☐ |
-| C9 | Edit fields on the staged review card, then Confirm | the stored record contains the **edited** values, re-validated | ☐ |
-| C10 | Press **Discard** on a staged card | tracker row count unchanged; the uploaded file is removed from `data/uploads/` | ☐ |
-| C11 | Confirm a token twice / use a fake token | 404 "Staged extraction not found…" | ☐ |
 
 ## D. Real-mode (with API key) checks
 

@@ -138,10 +138,8 @@
             (bad dates, tax ≥ total, unknown currency…), and
             <b>potential duplicates</b> (same vendor + invoice #, same file hash,
             or same vendor + amount + date ± 3 days).</li>
-        <li>The extraction is <b>staged</b>: edit any field on the review card,
-            then <b>Confirm</b> to store it in the <b>expense tracker</b>
-            (SQLite) or <b>Discard</b> to save nothing. Fix any remaining flag
-            in the tracker and <b>approve</b> the record.</li>
+        <li>The record lands in the <b>expense tracker</b> (SQLite). Fix any flag
+            inline, then <b>approve</b> it.</li>
         <li>The <b>financial summary</b> tab totals expenses by category and
             currency; CSV/Markdown exports are one click away.</li>
       </ol>
@@ -197,69 +195,9 @@ async function handleUpload(f){
   const data = await res.json();
   if (!res.ok){ $("#uploadResult").innerHTML =
     `<p style="color:var(--err)">❌ ${data.error || res.statusText}</p>`; toast("Upload failed", true); return; }
-  renderStaged(data);
+  toast("Extracted ✔ — id #" + data.id);
+  $("#uploadResult").innerHTML = renderRecord(data, true);
 }
-
-// ---- staged review: edit the extraction BEFORE anything is stored ----
-const esc = v => (v ?? "").toString().replace(/"/g,"&quot;");
-function renderStaged(st){
-  const r = st.record;
-  const flags = (st.flags||[]).map(f =>
-    `<span class="flag ${f.severity}">[${f.type}] ${f.message}</span>`).join("");
-  const inp = (f, label, val, type="text") => `
-    <label style="display:block;font-size:12px;color:var(--muted);margin:6px 0 2px">${label}</label>
-    <input id="st_${f}" type="${type}" value="${esc(val)}" style="width:100%">`;
-  const sel = (f, label, opts, cur) => `
-    <label style="display:block;font-size:12px;color:var(--muted);margin:6px 0 2px">${label}</label>
-    <select id="st_${f}" style="width:100%">
-      ${opts.map(o=>`<option ${o===cur?"selected":""}>${o}</option>`).join("")}
-    </select>`;
-  $("#uploadResult").innerHTML = `
-  <div class="card" style="margin:14px 0 0;border-color:#93b4fd">
-    <b>🟡 Staged review — ${r.doc_filename}</b>
-    <span style="color:var(--muted);font-size:12.5px"> (not saved yet: edit anything, then Confirm)</span>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px 14px;margin-top:8px">
-      <div>${sel("doc_type","Document type",["invoice","receipt","unknown"], r.doc_type)}
-           ${inp("doc_date","Date (YYYY-MM-DD)", r.doc_date)}</div>
-      <div>${inp("vendor","Vendor / provider", r.vendor)}
-           ${inp("invoice_number","Invoice number", r.invoice_number)}</div>
-      <div>${inp("description","Description", r.description)}
-           ${inp("amount","Amount", r.amount, "number")}
-           ${inp("currency","Currency (ISO 3)", r.currency)}
-           ${inp("tax_amount","Tax / VAT", r.tax_amount, "number")}</div>
-    </div>
-    ${sel("category","Category",cats, r.category)}
-    <div style="margin-top:10px">${flags ||
-      '<span style="color:var(--ok);font-size:13px">✔ No validation issues</span>'}</div>
-    <div style="margin-top:14px;display:flex;gap:8px">
-      <button class="btn primary" onclick="stagedConfirm('${st.staging_token}')">✅ Confirm &amp; add to tracker</button>
-      <button class="btn ghost" onclick="stagedDiscard('${st.staging_token}')">✖ Discard (nothing saved)</button>
-    </div>
-  </div>`;
-}
-window.stagedConfirm = async token => {
-  const g = f => document.getElementById("st_"+f);
-  const edits = {
-    doc_type: g("doc_type").value, doc_date: g("doc_date").value.trim(),
-    vendor: g("vendor").value, invoice_number: g("invoice_number").value,
-    description: g("description").value,
-    amount: g("amount").value, currency: g("currency").value,
-    tax_amount: g("tax_amount").value, category: g("category").value,
-  };
-  const res = await fetch(`/api/staged/${token}/confirm`, {method:"POST",
-    headers:{"Content-Type":"application/json"}, body: JSON.stringify({edits})});
-  const data = await res.json();
-  if (!res.ok){ toast(data.error, true); return; }
-  toast("Confirmed ✔ — record #" + data.id + " added to the tracker");
-  $("#uploadResult").innerHTML = renderRecord(data);
-};
-window.stagedDiscard = async token => {
-  const res = await fetch(`/api/staged/${token}/discard`, {method:"POST"});
-  if (!res.ok){ toast((await res.json()).error, true); return; }
-  toast("Discarded — nothing was saved", true);
-  $("#uploadResult").innerHTML =
-    '<p style="color:var(--muted)">Discarded. Upload another document when ready.</p>';
-};
 
 function renderRecord(r, full=false){
   const flags = (r.flags||[]).map(f =>

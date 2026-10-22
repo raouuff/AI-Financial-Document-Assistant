@@ -69,16 +69,11 @@ In real mode those same samples are processed through actual Gemini calls.
 
 ## 🖥️ Using the dashboard
 
-1. **Upload & Process** — drag any PDF/PNG/JPG invoice or receipt. The AI
-   extraction first appears as a **staged review card**: every field (date,
-   vendor, invoice #, description, amount, currency, VAT, type, category) is
-   editable, and preliminary validation flags are shown. Nothing touches the
-   database yet.
-   - **Confirm & add to tracker** → the (possibly corrected) extraction is
-     re-validated and stored. **Discard** → nothing is saved.
-2. **Expense Tracker** — only confirmed records appear. Fix any flagged field
-   inline and hit **Save** (the agent re-validates automatically and clears
-   flags that were resolved), then **Approve** or **Reject**.
+1. **Upload & Process** — drag any PDF/PNG/JPG invoice or receipt. The extracted
+   record is shown with all flags.
+2. **Expense Tracker** — every record lands here automatically. Fix any flagged
+   field inline and hit **Save** (the agent re-validates automatically and
+   clears flags that were resolved), then **Approve** or **Reject**.
 3. **Financial Summary** — expenses chart by category (segments colored by
    currency), totals by category and currency + downloadable
    `financial_summary.md`.
@@ -88,9 +83,7 @@ In real mode those same samples are processed through actual Gemini calls.
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/upload` | Stage: extract → categorize → validate (nothing stored yet) |
-| `POST /api/staged/{token}/confirm` | Confirm the (optionally edited) extraction → stored in tracker |
-| `POST /api/staged/{token}/discard` | Discard the staged extraction — nothing is saved |
+| `POST /api/upload` | Upload → extract → categorize → validate → store |
 | `GET /api/expenses[?status=]` | List the tracked expenses |
 | `PATCH /api/expenses/{id}` | Human-correct a field (auto re-validation) |
 | `POST /api/expenses/{id}/status` | `approved` / `rejected` / `pending_review` |
@@ -126,32 +119,25 @@ plan with expected results for every requirement.
 
 A review session that exercises every requirement in ~10 minutes:
 
-1. **Staged extraction + human review** — process
-   `invoice-software-subscription-usd.pdf`; the extraction appears as an
-   editable review card. Edit a field (e.g. the description), press
-   **Confirm & add to tracker** — the corrected record enters the tracker with
-   the `software` category and no flags.
-2. **Duplicate detection** — upload `invoice-hotel-travel-eur.png` (confirm),
-   then its `COPY`: instead of confirming, observe the duplicate flag on the
-   staged card and press **Discard — nothing was saved**; optionally instead
-   confirm and **Reject** in the tracker (either path keeps the copy out of
-   the totals).
+1. **Upload & extraction** — process `invoice-software-subscription-usd.pdf`;
+   confirm all fields (date, vendor, invoice #, description, amount + currency,
+   VAT) and the `software` category with no flags.
+2. **Duplicate detection** — upload `invoice-hotel-travel-eur.png`, then its
+   `COPY`. The copy is flagged as a potential duplicate with a link to the
+   original; **Reject** it (the tracker's `status` column records the decision).
 3. **Missing information + human correction** — upload
-   `receipt-event-catering-usd-nodate.png` (missing-date flag); type
-   `2025-12-14` into the staged card's date box, **Confirm** (flag cleared), then
-   **Approve** in the tracker.
+   `receipt-event-catering-usd-nodate.png` (missing date flag); type
+   `2025-12-14` into the tracker, press **Save** (record re-validates and the
+   flag clears), then **Approve**.
 4. **Inconsistent data** — `invoice-equipment-camera-badvat.png` carries a
    VAT-not-smaller-than-total warning into approval, demonstrating
    approve-with-warning for human judgment.
-5. **Judgment calls** — upload and confirm both taxi receipts; the second is
-   flagged `potential duplicate` although both rides are legitimate — approve
-   both to show why a human remains in the loop.
+5. **Judgment calls** — upload both taxi receipts; the second is flagged
+   `potential duplicate` although both rides are legitimate — approve both to
+   show why a human remains in the loop.
 6. **Summary & outputs** — open the Financial Summary tab (stacked chart by
    category, per-currency totals), then export the CSV and the Markdown
    summary; reference `/docs` for the API contract.
-
-Golden totals when every staged doc is confirmed except the hotel `COPY`,
-all records approved: **USD 5,721.08 · AED 3,200.00 · EUR 464.10 · EGP 334.19**.
 
 ## ⚠️ Limitations (for reviewers)
 
