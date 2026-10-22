@@ -13,6 +13,7 @@ def build_summary() -> dict:
 
     total_by_category = defaultdict(float)
     total_by_currency = defaultdict(float)
+    count_by_category = defaultdict(int)
     currency_by_category: dict[str, defaultdict] = defaultdict(lambda: defaultdict(float))
     open_items, flagged, duplicates = 0, 0, 0
 
@@ -25,6 +26,7 @@ def build_summary() -> dict:
         total_by_category[cat] += amount
         total_by_currency[cur] += amount
         currency_by_category[cat][cur] += amount
+        count_by_category[cat] += 1
         if e.get("status") == "pending_review":
             open_items += 1
         errors = [f for f in e.get("flags", []) if f.get("severity") == "error"]
@@ -41,6 +43,7 @@ def build_summary() -> dict:
         "potential_duplicates": duplicates,
         "by_category": {
             cat: {
+                "count": count_by_category[cat],
                 "total_by_currency": dict(curs),
                 "grand_total_for_display": " / ".join(
                     f"{c} {v:,.2f}" for c, v in sorted(curs.items())
@@ -65,11 +68,11 @@ def to_markdown(summary: dict) -> str:
         "",
         "## By category",
         "",
-        "| Category | Total by currency |",
-        "|---|---|",
+        "| Category | Records | Total by currency |",
+        "|---|---|---|",
     ]
     for cat, info in summary["by_category"].items():
-        lines.append(f"| {cat} | {info['grand_total_for_display'] or '—'} |")
+        lines.append(f"| {cat} | {info.get('count', '—')} | {info['grand_total_for_display'] or '—'} |")
     lines += ["", "## By currency", ""]
     for cur, total in summary["by_currency"].items():
         lines.append(f"- **{cur}**: {total:,.2f}")
