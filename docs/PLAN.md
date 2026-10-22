@@ -32,4 +32,4 @@ Summary (by category × currency) → CSV export.
 - Source → this repo (git init with clean history)
 - Sample outputs → `exports/sample_expense_tracker.csv`, `exports/sample_financial_summary.md`
 - Technical doc → `docs/ARCHITECTURE.md`, `docs/TEST_PLAN.md`, `README.md`
-- Demo video → user records (script provided in README §Demo script)
+- Reproducible demo dataset → `sample_data/` (10 fictional documents; generator in `scripts/`)

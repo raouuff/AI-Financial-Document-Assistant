@@ -1,0 +1,12 @@
+{
+  "doc_type": "invoice",
+  "document_date": "2025-12-01",
+  "vendor": "Meridian Tech Consulting LLC.",
+  "invoice_number": "MTC-2025-1022",
+  "description": "Embedded firmware contractor \u2014 22 days daily rate",
+  "amount": 1466.08,
+  "currency": "USD",
+  "tax_amount": 157.08,
+  "category": "personnel",
+  "extraction_confidence": 0.97
+}

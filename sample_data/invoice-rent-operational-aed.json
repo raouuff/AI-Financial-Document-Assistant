@@ -1,0 +1,12 @@
+{
+  "doc_type": "invoice",
+  "document_date": "2025-11-01",
+  "vendor": "Emirates Business Centers FZE",
+  "invoice_number": "EBC-2025-3345",
+  "description": "Shared office unit B-204 monthly rent",
+  "amount": 3200.0,
+  "currency": "AED",
+  "tax_amount": 160.0,
+  "category": "operational",
+  "extraction_confidence": 0.95
+}

@@ -193,6 +193,89 @@ sidecar(stem, {
 })
 made += [f"{stem}.png", f"{stem}.json"]
 
+# 7 --- PERSONNEL contractor invoice (PDF, complete clean, USD) ----------------
+stem = "invoice-personnel-contractor-usd"
+render_pdf("MERIDIAN TECH CONSULTING LLC.", [
+    "Invoice No: MTC-2025-1022",
+    "Invoice Date: 2025-12-01",
+    "Bill To: Nova Robotics Project",
+    "Description: Embedded firmware contractor — 22 days x $59.50/day rate",
+    "Subtotal: $1,309.00",
+    "Tax / VAT (12%): $157.08",
+    "Total Due: $1,466.08 USD",
+    "Currency: USD",
+    "Payment terms: Net 15",
+], f"{stem}.pdf")
+sidecar(stem, {
+    "doc_type": "invoice", "document_date": "2025-12-01",
+    "vendor": "Meridian Tech Consulting LLC.", "invoice_number": "MTC-2025-1022",
+    "description": "Embedded firmware contractor — 22 days daily rate",
+    "amount": 1466.08, "currency": "USD", "tax_amount": 157.08,
+    "category": "personnel", "extraction_confidence": 0.97,
+})
+made += [f"{stem}.pdf", f"{stem}.json"]
+
+# 8 --- TRAVEL taxi receipt (clean, USD) ----------------------------------------
+stem = "receipt-taxi-travel-usd"
+render_png([
+    ("CITYRIDE TAXI SERVICE", 26, True),
+    ("Ride #TX-77314 · 2025-11-30", 15, False),
+    ("Airport to Project Office (14.3 km)", 15, False),
+    ("Fare: 38.00 USD", 17, False),
+    ("Tolls & surcharges: 4.50 USD", 17, False),
+    ("TOTAL CHARGED: 42.50 USD", 24, True),
+    ("Paid by corporate card", 15, False),
+], f"{stem}.png")
+sidecar(stem, {
+    "doc_type": "receipt", "document_date": "2025-11-30",
+    "vendor": "CityRide Taxi Service", "invoice_number": "TX-77314",
+    "description": "Airport to project office transfer (14.3 km)",
+    "amount": 42.50, "currency": "USD", "tax_amount": 4.50,
+    "category": "travel", "extraction_confidence": 0.92,
+})
+made += [f"{stem}.png", f"{stem}.json"]
+
+# 9 --- TRAVEL taxi receipt, same vendor + amount + date as #8, different file --
+#       → exercises the vendor+amount+date(±3d) duplicate heuristic
+stem = "receipt-taxi-travel-usd-same-day"
+render_png([
+    ("CITYRIDE TAXI SERVICE", 26, True),
+    ("Ride #TX-77319 · 2025-11-30", 15, False),
+    ("Project Office to Airport (14.1 km)", 15, False),
+    ("Fare: 38.00 USD", 17, False),
+    ("Tolls & surcharges: 4.50 USD", 17, False),
+    ("TOTAL CHARGED: 42.50 USD", 24, True),
+    ("Paid by corporate card", 15, False),
+], f"{stem}.png")
+sidecar(stem, {
+    "doc_type": "receipt", "document_date": "2025-11-30",
+    "vendor": "CityRide Taxi Service", "invoice_number": "TX-77319",
+    "description": "Project office to airport transfer (14.1 km)",
+    "amount": 42.50, "currency": "USD", "tax_amount": 4.50,
+    "category": "travel", "extraction_confidence": 0.92,
+})
+made += [f"{stem}.png", f"{stem}.json"]
+
+# 10 --- OPERATIONAL office rent invoice (clean, AED — 4th currency) ------------
+stem = "invoice-rent-operational-aed"
+render_png([
+    ("EMIRATES BUSINESS CENTERS FZE", 26, True),
+    ("Invoice No: EBC-2025-3345", 17, False),
+    ("Invoice Date: 2025-11-01", 17, False),
+    ("Shared office unit B-204, Sharjah — monthly rent, project team", 15, False),
+    ("Rent: 3,040.00 AED", 17, False),
+    ("Municipality fee (5%): 160.00 AED", 17, False),
+    ("TOTAL DUE: 3,200.00 AED", 24, True),
+], f"{stem}.png")
+sidecar(stem, {
+    "doc_type": "invoice", "document_date": "2025-11-01",
+    "vendor": "Emirates Business Centers FZE", "invoice_number": "EBC-2025-3345",
+    "description": "Shared office unit B-204 monthly rent",
+    "amount": 3200.00, "currency": "AED", "tax_amount": 160.00,
+    "category": "operational", "extraction_confidence": 0.95,
+})
+made += [f"{stem}.png", f"{stem}.json"]
+
 print("Created in sample_data/:")
 for m in made:
     print("  •", m)

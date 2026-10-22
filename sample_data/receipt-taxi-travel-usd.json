@@ -1,0 +1,12 @@
+{
+  "doc_type": "receipt",
+  "document_date": "2025-11-30",
+  "vendor": "CityRide Taxi Service",
+  "invoice_number": "TX-77314",
+  "description": "Airport to project office transfer (14.3 km)",
+  "amount": 42.5,
+  "currency": "USD",
+  "tax_amount": 4.5,
+  "category": "travel",
+  "extraction_confidence": 0.92
+}

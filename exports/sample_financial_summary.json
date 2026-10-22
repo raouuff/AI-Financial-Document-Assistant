@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-22T12:33:58+00:00",
-  "total_expenses": 7,
+  "generated_at": "2026-10-22T12:40:40+00:00",
+  "total_expenses": 10,
   "open_items_awaiting_review": 0,
-  "items_flagged_for_review": 2,
+  "items_flagged_for_review": 3,
   "potential_duplicates": 1,
   "by_category": {
     "equipment": {
@@ -20,36 +20,47 @@
       "grand_total_for_display": "USD 697.60"
     },
     "operational": {
-      "count": 1,
-      "total_by_currency": {
-        "EGP": 334.19
-      },
-      "grand_total_for_display": "EGP 334.19"
-    },
-    "software": {
       "count": 2,
       "total_by_currency": {
-        "USD": 2644.8
+        "AED": 3200.0,
+        "EGP": 334.19
       },
-      "grand_total_for_display": "USD 2,644.80"
+      "grand_total_for_display": "AED 3,200.00 / EGP 334.19"
     },
-    "travel": {
+    "personnel": {
       "count": 1,
       "total_by_currency": {
+        "USD": 1466.08
+      },
+      "grand_total_for_display": "USD 1,466.08"
+    },
+    "software": {
+      "count": 1,
+      "total_by_currency": {
+        "USD": 1322.4
+      },
+      "grand_total_for_display": "USD 1,322.40"
+    },
+    "travel": {
+      "count": 3,
+      "total_by_currency": {
+        "USD": 85.0,
         "EUR": 464.1
       },
-      "grand_total_for_display": "EUR 464.10"
+      "grand_total_for_display": "EUR 464.10 / USD 85.00"
     }
   },
   "by_currency": {
+    "AED": 3200.0,
     "EGP": 334.19,
     "EUR": 464.1,
-    "USD": 5492.4
+    "USD": 5721.08
   },
   "categories_used": [
     "equipment",
     "events",
     "operational",
+    "personnel",
     "software",
     "travel"
   ]
