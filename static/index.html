@@ -222,7 +222,7 @@ async function loadExpenses(){
     <td>#${r.id}</td>
     <td><span class="badge ${r.status}">${r.status.replace("_"," ")}</span></td>
     <td><input data-id="${r.id}" data-f="doc_date" value="${r.doc_date||""}" size="10"></td>
-    <td><input data-id="${r.id}" data-f="vendor" value="${(r.vendor||"").replace(/"/g,""")}" size="18"></td>
+    <td><input data-id="${r.id}" data-f="vendor" value="${(r.vendor||"").replace(/"/g,"&quot;")}" size="18"></td>
     <td>${r.invoice_number||"—"}</td>
     <td>${r.description||"—"}</td>
     <td><select data-id="${r.id}" data-f="category">
@@ -285,3 +285,4 @@ loadMode();
 </script>
 </body>
 </html>
+'
